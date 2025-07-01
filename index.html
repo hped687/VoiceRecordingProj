@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>Voice Recorder</title>
+
+  <!-- Load the main WebAudioRecorder class -->
   <script src="lib/WebAudioRecorder.js"></script>
+
+  <!-- Optional: CSS -->
   <style>
     body { font-family: sans-serif; padding: 2em; }
     button { font-size: 1.2em; padding: 0.5em 1em; }
@@ -14,6 +18,7 @@
   <button id="record-btn">Start Recording</button>
   <p id="status-msg"></p>
 
+  <!-- ✅ This script runs AFTER WebAudioRecorder is loaded -->
   <script>
     let gumStream, recorder;
     const recordBtn = document.getElementById("record-btn");
@@ -27,7 +32,7 @@
           const input = new AudioContext().createMediaStreamSource(stream);
 
           recorder = new WebAudioRecorder(input, {
-            workerDir: "lib/", // relative path to lib/ inside same domain
+            workerDir: "lib/", // relative to Netlify project
             encoding: "wav",
             numChannels: 1,
             onEncoderLoading: () => statusMsg.innerText = "Loading encoder...",
@@ -49,14 +54,14 @@
               method: "POST",
               body: formData
             })
-            .then(() => {
-              statusMsg.innerText = "✅ Uploaded successfully!";
-              recordBtn.disabled = true;
-            })
-            .catch(error => {
-              statusMsg.innerText = "❌ Upload failed.";
-              console.error("Upload error:", error);
-            });
+              .then(() => {
+                statusMsg.innerText = "✅ Uploaded successfully!";
+                recordBtn.disabled = true;
+              })
+              .catch(error => {
+                statusMsg.innerText = "❌ Upload failed.";
+                console.error("Upload error:", error);
+              });
           };
 
           recorder.startRecording();
