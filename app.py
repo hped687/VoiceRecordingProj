@@ -3,6 +3,9 @@ from flask_cors import CORS  # 👈 Add this line
 import dropbox
 import os
 from werkzeug.utils import secure_filename
+import uuid
+unique_name = f"voice_recording_{uuid.uuid4().hex}.wav"
+dropbox_path = f"/qualtrics_audio/{unique_name}"
 
 app = Flask(__name__)
 CORS(app)  # 👈 Enable CORS for all domains (or restrict to Netlify if preferred)
