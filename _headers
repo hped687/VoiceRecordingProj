@@ -1,9 +1,3 @@
 
-/lib/*
-  Access-Control-Allow-Origin: *
-
-/WebAudioRecorder.js
-  Access-Control-Allow-Origin: *
-
-/WavAudioEncoder.min.js
+/*
   Access-Control-Allow-Origin: *
