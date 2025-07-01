@@ -22,3 +22,7 @@ def upload_file():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 app.run(host='0.0.0.0', port=5000)
+
+@app.route('/')
+def home():
+    return "Flask app is running!"
