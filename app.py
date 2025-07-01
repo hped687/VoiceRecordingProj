@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS  # 👈 Add this line
 import dropbox
 import os
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)  # <-- enable CORS for all routes
+CORS(app)  # 👈 Enable CORS for all domains (or restrict to Netlify if preferred)
 
 DROPBOX_TOKEN = os.environ.get('DROPBOX_ACCESS_TOKEN')
 dbx = dropbox.Dropbox(DROPBOX_TOKEN)
