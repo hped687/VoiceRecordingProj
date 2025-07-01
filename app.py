@@ -5,7 +5,7 @@ import os
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)  # <-- Enable CORS for all routes
+CORS(app)  # <-- enable CORS for all routes
 
 DROPBOX_TOKEN = os.environ.get('DROPBOX_ACCESS_TOKEN')
 dbx = dropbox.Dropbox(DROPBOX_TOKEN)
@@ -25,5 +25,5 @@ def upload_file():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
