@@ -1,0 +1,14 @@
+[[headers]]
+  for = "/lib/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/WebAudioRecorder.js"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/WavAudioEncoder.min.js"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
