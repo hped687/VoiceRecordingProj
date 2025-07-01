@@ -1,2 +1,4 @@
 Flask
 dropbox
+flask-cors
+gunicorn
