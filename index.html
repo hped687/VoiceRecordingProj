@@ -1,0 +1,24 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CORS Test</title>
+</head>
+<body>
+  <h1>CORS Header Test</h1>
+  <script>
+    fetch('./lib/WebAudioRecorderWav.js')
+      .then(res => {
+        if (res.headers.get('Access-Control-Allow-Origin') === '*') {
+          document.body.innerHTML += '<p style="color:green;">✅ CORS header detected!</p>';
+        } else {
+          document.body.innerHTML += '<p style="color:red;">❌ CORS header missing.</p>';
+        }
+      })
+      .catch(err => {
+        document.body.innerHTML += '<p style="color:red;">❌ Fetch failed.</p>';
+        console.error(err);
+      });
+  </script>
+</body>
+</html>
