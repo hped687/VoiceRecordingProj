@@ -3,13 +3,14 @@ from flask_cors import CORS  # 👈 Add this line
 import dropbox
 import os
 from werkzeug.utils import secure_filename
-import uuid
-unique_name = f"voice_recording_{uuid.uuid4().hex}.wav"
-dropbox_path = f"/qualtrics_audio/{unique_name}"
+from datetime import datetime
+
+# Inside upload_file():
+timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+filename = f"voice_recording_{timestamp}.wav"
 
 app = Flask(__name__)
-CORS(app)  # 👈 Enable CORS for all domains (or restrict to Netlify if preferred)
-
+CORS(app) 
 DROPBOX_TOKEN = os.environ.get('DROPBOX_ACCESS_TOKEN')
 dbx = dropbox.Dropbox(DROPBOX_TOKEN)
 
@@ -19,15 +20,13 @@ def upload_file():
         return jsonify({'error': 'No file uploaded'}), 400
 
     file = request.files['file']
-    filename = secure_filename(file.filename)
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    filename = f"voice_recording_{timestamp}.wav"
     dropbox_path = f"/qualtrics_audio/{filename}"
 
     try:
-        content = file.read()
-        print(f"Uploading {filename}, size: {len(content)} bytes")
-        dbx.files_upload(content, dropbox_path, mute=True)
+        dbx.files_upload(file.read(), dropbox_path, mute=True)
+        print(f"Uploading {filename}, size: {len(file.read())} bytes")
         return jsonify({'status': 'success', 'filename': filename}), 200
     except Exception as e:
-        import traceback
-        traceback.print_exc()  # <-- print full error trace to Render logs
         return jsonify({'error': str(e)}), 500
