@@ -20,6 +20,11 @@
 
   <!-- ✅ This script runs AFTER WebAudioRecorder is loaded -->
   <script>
+    // Get URL parameters (e.g., ?qid=Q2_open_response&pid=1234)
+    const urlParams = new URLSearchParams(window.location.search);
+    const qid = urlParams.get('qid') || 'unknown_question';
+    const pid = urlParams.get('pid') || 'anon';
+
     let gumStream, recorder;
     const recordBtn = document.getElementById("record-btn");
     const statusMsg = document.getElementById("status-msg");
@@ -44,26 +49,28 @@
             encodeAfterRecord: true
           });
 
-          recorder.onComplete = function (rec, blob) {
-            statusMsg.innerText = "Recording complete. Uploading...";
+         recorder.onComplete = function (rec, blob) {
+  statusMsg.innerText = "Recording complete. Uploading...";
 
-            const formData = new FormData();
-            formData.append("file", blob, "voice_recording.wav");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `${pid}_${qid}_${timestamp}.wav`;
 
-            fetch("https://qualtrics-audio-upload.onrender.com/upload", {
-              method: "POST",
-              body: formData
-            })
-              .then(() => {
-                statusMsg.innerText = "✅ Uploaded successfully!";
-                recordBtn.disabled = true;
-              })
-              .catch(error => {
-                statusMsg.innerText = "❌ Upload failed.";
-                console.error("Upload error:", error);
-              });
-          };
+  const formData = new FormData();
+  formData.append("file", blob, filename);
 
+  fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+    method: "POST",
+    body: formData
+  })
+    .then(() => {
+      statusMsg.innerText = "✅ Uploaded successfully!";
+      recordBtn.disabled = true;
+    })
+    .catch(error => {
+      statusMsg.innerText = "❌ Upload failed.";
+      console.error("Upload error:", error);
+    });
+};
           recorder.startRecording();
           recordBtn.innerText = "Stop Recording";
 
