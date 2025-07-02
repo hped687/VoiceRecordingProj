@@ -20,11 +20,12 @@
 
   <script>
     // Extract URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const pid = urlParams.get('pid') || 'anon';
-    const qid = urlParams.get('qid') || 'unknown_question';
-    const participantId = urlParams.get("participant_id") || pid;
-    const questionLabel = urlParams.get("question_label") || qid;
+   const urlParams = new URLSearchParams(window.location.search);
+const pid = urlParams.get('pid') || 'anon';
+const qid = urlParams.get('qid') || 'unknown_question';
+
+console.log('Participant ID:', pid);
+console.log('Question ID:', qid);
 
     let gumStream, recorder;
     const recordBtn = document.getElementById("record-btn");
