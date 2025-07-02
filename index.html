@@ -20,6 +20,12 @@
 
   <!-- ✅ This script runs AFTER WebAudioRecorder is loaded -->
   <script>
+    window.addEventListener("message", (event) => {
+    if (event.origin !== "https://quiet-beignet-08bd46.netlify.app") return;
+
+    const { participant_id, question_label } = event.data;
+  // Store for use in naming, uploading, etc.
+});
     // Get URL parameters (e.g., ?qid=Q2_open_response&pid=1234)
     const urlParams = new URLSearchParams(window.location.search);
     const qid = urlParams.get('qid') || 'unknown_question';
