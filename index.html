@@ -54,13 +54,16 @@ console.log('Question ID:', qid);
           recorder.onComplete = function (rec, blob) {
             statusMsg.innerText = "Recording complete. Uploading...";
 
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const filename = `${participantId}_${questionLabel}_${timestamp}.wav`;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+const filename = `${pid}_${qid}_${timestamp}.wav`;
 
-            const formData = new FormData();
-            formData.append("file", blob, filename);
-            formData.append("participant_id", participantId);
-            formData.append("question_label", questionLabel);
+const formData = new FormData();
+formData.append("file", blob, filename);
+
+// Optional: add them as metadata if your backend uses them
+formData.append("participant_id", pid);
+formData.append("question_label", qid);
+
 
             fetch("https://qualtrics-audio-upload.onrender.com/upload", {
               method: "POST",
