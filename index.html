@@ -18,18 +18,13 @@
   <button id="record-btn">Start Recording</button>
   <p id="status-msg"></p>
 
-  <!-- ✅ This script runs AFTER WebAudioRecorder is loaded -->
   <script>
-    window.addEventListener("message", (event) => {
-    if (event.origin !== "https://quiet-beignet-08bd46.netlify.app") return;
-
-    const { participant_id, question_label } = event.data;
-  // Store for use in naming, uploading, etc.
-});
-    // Get URL parameters (e.g., ?qid=Q2_open_response&pid=1234)
+    // Extract URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const qid = urlParams.get('qid') || 'unknown_question';
     const pid = urlParams.get('pid') || 'anon';
+    const qid = urlParams.get('qid') || 'unknown_question';
+    const participantId = urlParams.get("participant_id") || pid;
+    const questionLabel = urlParams.get("question_label") || qid;
 
     let gumStream, recorder;
     const recordBtn = document.getElementById("record-btn");
@@ -43,7 +38,7 @@
           const input = new AudioContext().createMediaStreamSource(stream);
 
           recorder = new WebAudioRecorder(input, {
-            workerDir: "lib/", // relative to Netlify project
+            workerDir: "lib/",
             encoding: "wav",
             numChannels: 1,
             onEncoderLoading: () => statusMsg.innerText = "Loading encoder...",
@@ -55,47 +50,31 @@
             encodeAfterRecord: true
           });
 
-         recorder.onComplete = function (rec, blob) {
-  statusMsg.innerText = "Recording complete. Uploading...";
+          recorder.onComplete = function (rec, blob) {
+            statusMsg.innerText = "Recording complete. Uploading...";
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `${pid}_${qid}_${timestamp}.wav`;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `${participantId}_${questionLabel}_${timestamp}.wav`;
 
-  const formData = new FormData();
-formData.append("file", blob, "voice_recording.wav");
-// Function to get URL params
-function getParam(name) {
-  const url = new URL(window.location.href);
-  return url.searchParams.get(name) || "unknown";
-}
+            const formData = new FormData();
+            formData.append("file", blob, filename);
+            formData.append("participant_id", participantId);
+            formData.append("question_label", questionLabel);
 
-// Get participant_id and question_label from URL
-const participantId = getParam("participant_id");
-const questionLabel = getParam("question_label");
+            fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+              method: "POST",
+              body: formData
+            })
+              .then(() => {
+                statusMsg.innerText = "✅ Uploaded successfully!";
+                recordBtn.disabled = true;
+              })
+              .catch(error => {
+                statusMsg.innerText = "❌ Upload failed.";
+                console.error("Upload error:", error);
+              });
+          };
 
-// Build filename with timestamp
-const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-const filename = `${participantId}_${questionLabel}_${timestamp}.wav`;
-
-// 🔧 Add custom metadata fields
-formData.append("participant_id", participantId);     // Replace with dynamic value if available
-formData.append("question_label", questionlabel);           // Replace with the actual question label or ID
-
-fetch("https://qualtrics-audio-upload.onrender.com/upload", {
-  method: "POST",
-  body: formData
-})
-  .then(() => {
-    statusMsg.innerText = "✅ Uploaded successfully!";
-    recordBtn.disabled = true;
-  })
-  .catch(error => {
-    statusMsg.innerText = "❌ Upload failed.";
-    console.error("Upload error:", error);
-  });
-
-    });
-};
           recorder.startRecording();
           recordBtn.innerText = "Stop Recording";
 
