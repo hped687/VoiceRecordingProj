@@ -56,19 +56,38 @@
   const filename = `${pid}_${qid}_${timestamp}.wav`;
 
   const formData = new FormData();
-  formData.append("file", blob, filename);
+formData.append("file", blob, "voice_recording.wav");
+// Function to get URL params
+function getParam(name) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name) || "unknown";
+}
 
-  fetch("https://qualtrics-audio-upload.onrender.com/upload", {
-    method: "POST",
-    body: formData
+// Get participant_id and question_label from URL
+const participantId = getParam("participant_id");
+const questionLabel = getParam("question_label");
+
+// Build filename with timestamp
+const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+const filename = `${participantId}_${questionLabel}_${timestamp}.wav`;
+
+// 🔧 Add custom metadata fields
+formData.append("participant_id", participantId);     // Replace with dynamic value if available
+formData.append("question_label", questionlabel);           // Replace with the actual question label or ID
+
+fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+  method: "POST",
+  body: formData
+})
+  .then(() => {
+    statusMsg.innerText = "✅ Uploaded successfully!";
+    recordBtn.disabled = true;
   })
-    .then(() => {
-      statusMsg.innerText = "✅ Uploaded successfully!";
-      recordBtn.disabled = true;
-    })
-    .catch(error => {
-      statusMsg.innerText = "❌ Upload failed.";
-      console.error("Upload error:", error);
+  .catch(error => {
+    statusMsg.innerText = "❌ Upload failed.";
+    console.error("Upload error:", error);
+  });
+
     });
 };
           recorder.startRecording();
