@@ -18,85 +18,79 @@
   <button id="record-btn">Start Recording</button>
   <p id="status-msg"></p>
 
-  <script>
-    // Extract URL parameters
-   const urlParams = new URLSearchParams(window.location.search);
-const pid = urlParams.get('pid') || 'anon';
-const qid = urlParams.get('qid') || 'unknown_question';
+<script>
+  let gumStream, recorder;
+  const recordBtn = document.getElementById("record-btn");
+  const statusMsg = document.getElementById("status-msg");
 
-console.log('Participant ID:', pid);
-console.log('Question ID:', qid);
+  // ✅ Get pid and qid from URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const participantId = urlParams.get("pid") || "anon";
+  const questionId = urlParams.get("qid") || "unknown_question";
 
-    let gumStream, recorder;
-    const recordBtn = document.getElementById("record-btn");
-    const statusMsg = document.getElementById("status-msg");
+  recordBtn.onclick = async function () {
+    if (recordBtn.innerText === "Start Recording") {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        gumStream = stream;
+        const input = new AudioContext().createMediaStreamSource(stream);
 
-    recordBtn.onclick = async function () {
-      if (recordBtn.innerText === "Start Recording") {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          gumStream = stream;
-          const input = new AudioContext().createMediaStreamSource(stream);
+        recorder = new WebAudioRecorder(input, {
+          workerDir: "lib/",
+          encoding: "wav",
+          numChannels: 1,
+          onEncoderLoading: () => statusMsg.innerText = "Loading encoder...",
+          onEncoderLoaded: () => statusMsg.innerText = "Encoder ready. Recording..."
+        });
 
-          recorder = new WebAudioRecorder(input, {
-            workerDir: "lib/",
-            encoding: "wav",
-            numChannels: 1,
-            onEncoderLoading: () => statusMsg.innerText = "Loading encoder...",
-            onEncoderLoaded: () => statusMsg.innerText = "Encoder ready. Recording..."
-          });
+        recorder.setOptions({
+          timeLimit: 1800,
+          encodeAfterRecord: true
+        });
 
-          recorder.setOptions({
-            timeLimit: 1800,
-            encodeAfterRecord: true
-          });
+        recorder.onComplete = function (rec, blob) {
+          statusMsg.innerText = "Recording complete. Uploading...";
 
-          recorder.onComplete = function (rec, blob) {
-            statusMsg.innerText = "Recording complete. Uploading...";
+          // ✅ Use participantId and questionId to name the file
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+          const filename = `${participantId}_${questionId}_${timestamp}.wav`;
 
-            const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-const filename = `${pid}_${qid}_${timestamp}.wav`;
+          const formData = new FormData();
+          formData.append("file", blob, filename);
 
-const formData = new FormData();
-formData.append("file", blob, filename);
-
-// Optional: add them as metadata if your backend uses them
-formData.append("participant_id", pid);
-formData.append("question_label", qid);
-
-
-            fetch("https://qualtrics-audio-upload.onrender.com/upload", {
-              method: "POST",
-              body: formData
+          fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+            method: "POST",
+            body: formData
+          })
+            .then(() => {
+              statusMsg.innerText = "✅ Uploaded successfully!";
+              recordBtn.disabled = true;
             })
-              .then(() => {
-                statusMsg.innerText = "✅ Uploaded successfully!";
-                recordBtn.disabled = true;
-              })
-              .catch(error => {
-                statusMsg.innerText = "❌ Upload failed.";
-                console.error("Upload error:", error);
-              });
-          };
+            .catch(error => {
+              statusMsg.innerText = "❌ Upload failed.";
+              console.error("Upload error:", error);
+            });
+        };
 
-          recorder.startRecording();
-          recordBtn.innerText = "Stop Recording";
+        recorder.startRecording();
+        recordBtn.innerText = "Stop Recording";
 
-        } catch (err) {
-          statusMsg.innerText = "⚠️ Microphone access denied.";
-          console.error("Recording error:", err);
-        }
-      } else {
-        try {
-          recorder.finishRecording();
-          gumStream.getTracks().forEach(track => track.stop());
-          recordBtn.innerText = "Recording Finished";
-        } catch (err) {
-          statusMsg.innerText = "⚠️ Error stopping recording.";
-          console.error(err);
-        }
+      } catch (err) {
+        statusMsg.innerText = "⚠️ Microphone access denied.";
+        console.error("Recording error:", err);
       }
-    };
-  </script>
+    } else {
+      try {
+        recorder.finishRecording();
+        gumStream.getTracks().forEach(track => track.stop());
+        recordBtn.innerText = "Recording Finished";
+      } catch (err) {
+        statusMsg.innerText = "⚠️ Error stopping recording.";
+        console.error(err);
+      }
+    }
+  };
+</script>
+
 </body>
 </html>
