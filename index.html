@@ -19,6 +19,10 @@
   <p id="status-msg"></p>
 
 <script>
+  console.log("participantId:", participantId);
+  console.log("questionId:", questionId);
+  console.log("URL params:", window.location.search);
+
   let gumStream, recorder;
   const recordBtn = document.getElementById("record-btn");
   const statusMsg = document.getElementById("status-msg");
