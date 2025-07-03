@@ -19,9 +19,7 @@
   <p id="status-msg"></p>
 
 <script>
-  console.log("participantId:", participantId);
-  console.log("questionId:", questionId);
-  console.log("URL params:", window.location.search);
+
 
   let gumStream, recorder;
   const recordBtn = document.getElementById("record-btn");
@@ -31,7 +29,9 @@
   const urlParams = new URLSearchParams(window.location.search);
   const participantId = urlParams.get("pid") || "anon";
   const questionId = urlParams.get("qid") || "unknown_question";
-
+  console.log("participantId:", participantId);
+  console.log("questionId:", questionId);
+  console.log("URL params:", window.location.search);
   recordBtn.onclick = async function () {
     if (recordBtn.innerText === "Start Recording") {
       try {
