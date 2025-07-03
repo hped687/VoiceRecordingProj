@@ -20,13 +20,13 @@ def upload_file():
         return jsonify({'error': 'No file uploaded'}), 400
 
     file = request.files['file']
-    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-    filename = f"voice_recording_{timestamp}.wav"
-    dropbox_path = f"/qualtrics_audio/{filename}"
+    original_filename = file.filename or f"unnamed_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.wav"
+    dropbox_path = f"/qualtrics_audio/{original_filename}"
 
     try:
-        dbx.files_upload(file.read(), dropbox_path, mute=True)
-        print(f"Uploading {filename}, size: {len(file.read())} bytes")
-        return jsonify({'status': 'success', 'filename': filename}), 200
+        file_content = file.read()
+        dbx.files_upload(file_content, dropbox_path, mute=True)
+        print(f"Uploading {original_filename}, size: {len(file_content)} bytes")
+        return jsonify({'status': 'success', 'filename': original_filename}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
