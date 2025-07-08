@@ -41,7 +41,7 @@ def upload_file():
 
     try:
        access_token = get_access_token()
-        dbx = dropbox.Dropbox(access_token)
+       dbx = dropbox.Dropbox(access_token)
 
         file_content = file.read()
         dbx.files_upload(file_content, dropbox_path, mute=True)
