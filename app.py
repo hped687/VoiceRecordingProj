@@ -43,9 +43,9 @@ def upload_file():
        access_token = get_access_token()
        dbx = dropbox.Dropbox(access_token)
 
-        file_content = file.read()
-        dbx.files_upload(file_content, dropbox_path, mute=True)
-        print(f"Uploading {filename}, size: {len(file_content)} bytes")
-        return jsonify({'status': 'success', 'filename': filename}), 200
+       file_content = file.read()
+       dbx.files_upload(file_content, dropbox_path, mute=True)
+       print(f"Uploading {filename}, size: {len(file_content)} bytes")
+       return jsonify({'status': 'success', 'filename': filename}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+       return jsonify({'error': str(e)}), 500
