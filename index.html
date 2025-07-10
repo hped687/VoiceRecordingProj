@@ -3,11 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Voice Recorder</title>
-
-  <!-- Load the main WebAudioRecorder class -->
   <script src="lib/WebAudioRecorder.js"></script>
-
-  <!-- Optional: CSS -->
   <style>
     body { font-family: sans-serif; padding: 2em; }
     button { font-size: 1.2em; padding: 0.5em 1em; }
@@ -15,47 +11,61 @@
   </style>
 </head>
 <body>
+
+  <p>Please say: <em id="prompt-text">Waiting for prompt...</em></p>
   <button id="record-btn">Start Recording</button>
   <p id="status-msg"></p>
 
 <script>
-
-
   let gumStream, recorder;
+  let participantId = "anon";
+  let questionId = "unknown_question";
+  let recordingPrompt = "";
+
   const recordBtn = document.getElementById("record-btn");
   const statusMsg = document.getElementById("status-msg");
+  const promptText = document.getElementById("prompt-text");
 
-  // ✅ Get pid and qid from URL parameters
-  const urlParams = new URLSearchParams(window.location.search);
-  const participantId = urlParams.get("pid") || "anon";
-  const questionId = urlParams.get("qid") || "unknown_question";
-  console.log("participantId:", participantId);
-  console.log("questionId:", questionId);
-  console.log("URL params:", window.location.search);
- recordBtn.onclick = async function () {
-  if (recordBtn.innerText === "Start Recording") {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      gumStream = stream;
-      const input = new AudioContext().createMediaStreamSource(stream);
+  // ✅ Listen for postMessage from Qualtrics
+  window.addEventListener("message", (event) => {
+    if (typeof event.data !== 'object') return;
 
-      recorder = new WebAudioRecorder(input, {
-        workerDir: "lib/",
-        encoding: "wav",
-        numChannels: 1,
-        onEncoderLoading: () => statusMsg.innerText = "Loading encoder...",
-        onEncoderLoaded: () => statusMsg.innerText = "Encoder ready. Recording..."
-      });
+    const { pid, qid, prompt } = event.data;
 
-      recorder.setOptions({
-        timeLimit: 1800,
-        encodeAfterRecord: true
-      });
+    if (pid && qid && prompt) {
+      participantId = pid;
+      questionId = qid;
+      recordingPrompt = prompt;
+
+      promptText.textContent = prompt;
+      statusMsg.innerText = `🎤 Ready to record QID: ${qid}`;
+      recordBtn.disabled = false;
+    }
+  });
+
+  recordBtn.onclick = async function () {
+    if (recordBtn.innerText === "Start Recording") {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        gumStream = stream;
+        const input = new AudioContext().createMediaStreamSource(stream);
+
+        recorder = new WebAudioRecorder(input, {
+          workerDir: "lib/",
+          encoding: "wav",
+          numChannels: 1,
+          onEncoderLoading: () => statusMsg.innerText = "Loading encoder...",
+          onEncoderLoaded: () => statusMsg.innerText = "Encoder ready. Recording..."
+        });
+
+        recorder.setOptions({
+          timeLimit: 1800,
+          encodeAfterRecord: true
+        });
 
         recorder.onComplete = function (rec, blob) {
           statusMsg.innerText = "Recording complete. Uploading...";
 
-          // ✅ Use participantId and questionId to name the file
           const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
           const filename = `${participantId}_${questionId}_${timestamp}.wav`;
 
@@ -66,23 +76,25 @@
             method: "POST",
             body: formData
           })
-            .then(() => {
-              statusMsg.innerText = "✅ Uploaded successfully!";
-              recordBtn.disabled = true;
-            })
-            .catch(error => {
-              statusMsg.innerText = "❌ Upload failed.";
-              console.error("Upload error:", error);
-            });
+          .then(() => {
+            statusMsg.innerText = "✅ Uploaded successfully!";
+            recordBtn.disabled = true;
+          })
+          .catch(error => {
+            statusMsg.innerText = "❌ Upload failed.";
+            console.error("Upload error:", error);
+          });
         };
 
         recorder.startRecording();
         recordBtn.innerText = "Stop Recording";
         window.parent.postMessage({ type: "start-timer" }, "*");
+
       } catch (err) {
         statusMsg.innerText = "⚠️ Microphone access denied.";
         console.error("Recording error:", err);
       }
+
     } else {
       try {
         recorder.finishRecording();
