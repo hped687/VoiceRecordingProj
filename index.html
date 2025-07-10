@@ -8,17 +8,20 @@
     body { font-family: sans-serif; padding: 2em; }
     button { font-size: 1.2em; padding: 0.5em 1em; }
     #status-msg { margin-top: 1em; font-weight: bold; }
-    #prompt-text { margin-top: 1em; font-style: italic; }
+    #prompt-text { margin-top: 1em; font-style: italic; color: #444; }
   </style>
 </head>
 <body>
 
- 
   <button id="record-btn">Start Recording</button>
-  <p id="status-msg"></p>
+  <p id="status-msg">Waiting for prompt...</p>
+  <p id="prompt-text"></p>
 
 <script>
- let gumStream, recorder;
+let gumStream = null;
+let recorder = null;
+let micAccessGranted = false;
+
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
@@ -27,36 +30,38 @@ const recordBtn = document.getElementById("record-btn");
 const statusMsg = document.getElementById("status-msg");
 const promptText = document.getElementById("prompt-text");
 
-// Tell the parent you're ready to receive messages
+// Notify parent that iframe is ready
 window.parent.postMessage({ type: "iframe-ready" }, "*");
 
+// Listen for prompt/pid/qid from parent
 window.addEventListener("message", (event) => {
-  console.log("Received post message:", event.data);
   if (typeof event.data !== "object") return;
 
   const { pid, qid, prompt, type } = event.data;
-  
-  // Ignore messages that are not data messages
+
   if (type === "iframe-ready") return;
 
-  if (pid && qid) {
-    participantId = pid;
-    questionId = qid;
-    if (prompt) {
-      recordingPrompt = prompt;
-      promptText.textContent = prompt;
-    }
-    statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
-    }
+  if (pid) participantId = pid;
+  if (qid) questionId = qid;
+  if (prompt) {
+    recordingPrompt = prompt;
+    promptText.textContent = `🎙️ Prompt: ${prompt}`;
+  }
+
+  statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
 });
 
-
+// Handle record button
 recordBtn.onclick = async function () {
   if (recordBtn.innerText === "Start Recording") {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      gumStream = stream;
-      const input = new AudioContext().createMediaStreamSource(stream);
+      if (!micAccessGranted) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micAccessGranted = true;
+        gumStream = stream;
+      }
+
+      const input = new AudioContext().createMediaStreamSource(gumStream);
 
       recorder = new WebAudioRecorder(input, {
         workerDir: "lib/",
@@ -71,7 +76,6 @@ recordBtn.onclick = async function () {
         encodeAfterRecord: true,
       });
 
-      // Define onComplete handler here to capture latest participantId and questionId
       recorder.onComplete = function (rec, blob) {
         statusMsg.innerText = "Recording complete. Uploading...";
 
@@ -105,7 +109,7 @@ recordBtn.onclick = async function () {
   } else {
     try {
       recorder.finishRecording();
-      gumStream.getTracks().forEach((track) => track.stop());
+      if (gumStream) gumStream.getTracks().forEach((track) => track.stop());
       recordBtn.innerText = "Recording Finished";
     } catch (err) {
       statusMsg.innerText = "⚠️ Error stopping recording.";
@@ -113,7 +117,6 @@ recordBtn.onclick = async function () {
     }
   }
 };
-
 </script>
 
 </body>
