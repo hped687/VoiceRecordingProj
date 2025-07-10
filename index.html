@@ -1,4 +1,24 @@
-let gumStream, recorder;
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice Recorder</title>
+  <script src="lib/WebAudioRecorder.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    button { font-size: 1.2em; padding: 0.5em 1em; }
+    #status-msg { margin-top: 1em; font-weight: bold; }
+    #prompt-text { margin-top: 1em; font-style: italic; }
+  </style>
+</head>
+<body>
+
+  <p id="prompt-text">Waiting for prompt...</p>
+  <button id="record-btn" disabled>Start Recording</button>
+  <p id="status-msg"></p>
+
+<script>
+ let gumStream, recorder;
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
@@ -19,7 +39,7 @@ window.addEventListener("message", (event) => {
       recordingPrompt = prompt;
       promptText.textContent = prompt;
     }
-    statusMsg.innerText = ` Ready to record QID: ${questionId}`;
+    statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
     recordBtn.disabled = false;
   }
 });
@@ -86,3 +106,8 @@ recordBtn.onclick = async function () {
     }
   }
 };
+
+</script>
+
+</body>
+</html>
