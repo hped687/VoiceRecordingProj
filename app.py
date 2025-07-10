@@ -9,7 +9,7 @@ from requests.auth import HTTPBasicAuth
 import traceback
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://quiet-beignet-08bd46.netlify.app"])
 
 # Environment variables
 DROPBOX_APP_KEY = os.environ.get('DROPBOX_APP_KEY')
