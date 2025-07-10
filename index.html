@@ -1,116 +1,88 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>Voice Recorder</title>
-  <script src="lib/WebAudioRecorder.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 2em; }
-    button { font-size: 1.2em; padding: 0.5em 1em; }
-    #status-msg { margin-top: 1em; font-weight: bold; }
-    #prompt-text { margin-top: 1em; font-style: italic; }
-  </style>
-</head>
-<body>
+let gumStream, recorder;
+let participantId = "anon";
+let questionId = "unknown_question";
+let recordingPrompt = "";
 
-  <p id="prompt-text">Waiting for prompt...</p>
-  <button id="record-btn" disabled>Start Recording</button>
-  <p id="status-msg"></p>
+const recordBtn = document.getElementById("record-btn");
+const statusMsg = document.getElementById("status-msg");
+const promptText = document.getElementById("prompt-text");
 
-<script>
-  let gumStream, recorder;
-  let participantId = "anon";
-  let questionId = "unknown_question";
-  let recordingPrompt = "";
+window.addEventListener("message", (event) => {
+  console.log("Received post message:", event.data);
+  if (typeof event.data !== "object") return;
 
-  const recordBtn = document.getElementById("record-btn");
-  const statusMsg = document.getElementById("status-msg");
-  const promptText = document.getElementById("prompt-text");
-
-  // Listen for postMessage from Qualtrics
-  window.addEventListener("message", (event) => {
-    console.log("Received post message:", event.data);
-    if (typeof event.data !== 'object') return;
-
-    const { pid, qid, prompt } = event.data;
-
-    // Update only if pid and qid present, prompt optional
-    if (pid && qid) {
-      participantId = pid;
-      questionId = qid;
-      if (prompt) {
-        recordingPrompt = prompt;
-        promptText.textContent = prompt;
-      }
-      statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
-      recordBtn.disabled = false;
+  const { pid, qid, prompt } = event.data;
+  if (pid && qid) {
+    participantId = pid;
+    questionId = qid;
+    if (prompt) {
+      recordingPrompt = prompt;
+      promptText.textContent = prompt;
     }
-  });
+    statusMsg.innerText = ` Ready to record QID: ${questionId}`;
+    recordBtn.disabled = false;
+  }
+});
 
-  recordBtn.onclick = async function () {
-    if (recordBtn.innerText === "Start Recording") {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        gumStream = stream;
-        const input = new AudioContext().createMediaStreamSource(stream);
+recordBtn.onclick = async function () {
+  if (recordBtn.innerText === "Start Recording") {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      gumStream = stream;
+      const input = new AudioContext().createMediaStreamSource(stream);
 
-        recorder = new WebAudioRecorder(input, {
-          workerDir: "lib/",
-          encoding: "wav",
-          numChannels: 1,
-          onEncoderLoading: () => statusMsg.innerText = "Loading encoder...",
-          onEncoderLoaded: () => statusMsg.innerText = "Encoder ready. Recording..."
-        });
+      recorder = new WebAudioRecorder(input, {
+        workerDir: "lib/",
+        encoding: "wav",
+        numChannels: 1,
+        onEncoderLoading: () => (statusMsg.innerText = "Loading encoder..."),
+        onEncoderLoaded: () => (statusMsg.innerText = "Encoder ready. Recording..."),
+      });
 
-        recorder.setOptions({
-          timeLimit: 1800,
-          encodeAfterRecord: true
-        });
+      recorder.setOptions({
+        timeLimit: 1800,
+        encodeAfterRecord: true,
+      });
 
-        recorder.onComplete = function (rec, blob) {
-          statusMsg.innerText = "Recording complete. Uploading...";
+      // Define onComplete handler here to capture latest participantId and questionId
+      recorder.onComplete = function (rec, blob) {
+        statusMsg.innerText = "Recording complete. Uploading...";
 
-          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-          const filename = `${participantId}_${questionId}_${timestamp}.wav`;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const filename = `${participantId}_${questionId}_${timestamp}.wav`;
 
-          const formData = new FormData();
-          formData.append("file", blob, filename);
+        const formData = new FormData();
+        formData.append("file", blob, filename);
 
-          fetch("https://qualtrics-audio-upload.onrender.com/upload", {
-            method: "POST",
-            body: formData
-          })
+        fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+          method: "POST",
+          body: formData,
+        })
           .then(() => {
             statusMsg.innerText = "✅ Uploaded successfully!";
             recordBtn.disabled = true;
           })
-          .catch(error => {
+          .catch((error) => {
             statusMsg.innerText = "❌ Upload failed.";
             console.error("Upload error:", error);
           });
-        };
+      };
 
-        recorder.startRecording();
-        recordBtn.innerText = "Stop Recording";
-        window.parent.postMessage({ type: "start-timer" }, "*");
-
-      } catch (err) {
-        statusMsg.innerText = "⚠️ Microphone access denied.";
-        console.error("Recording error:", err);
-      }
-
-    } else {
-      try {
-        recorder.finishRecording();
-        gumStream.getTracks().forEach(track => track.stop());
-        recordBtn.innerText = "Recording Finished";
-      } catch (err) {
-        statusMsg.innerText = "⚠️ Error stopping recording.";
-        console.error(err);
-      }
+      recorder.startRecording();
+      recordBtn.innerText = "Stop Recording";
+      window.parent.postMessage({ type: "start-timer" }, "*");
+    } catch (err) {
+      statusMsg.innerText = "⚠️ Microphone access denied.";
+      console.error("Recording error:", err);
     }
-  };
-</script>
-
-</body>
-</html>
+  } else {
+    try {
+      recorder.finishRecording();
+      gumStream.getTracks().forEach((track) => track.stop());
+      recordBtn.innerText = "Recording Finished";
+    } catch (err) {
+      statusMsg.innerText = "⚠️ Error stopping recording.";
+      console.error(err);
+    }
+  }
+};
