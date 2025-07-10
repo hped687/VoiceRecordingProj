@@ -27,11 +27,18 @@ const recordBtn = document.getElementById("record-btn");
 const statusMsg = document.getElementById("status-msg");
 const promptText = document.getElementById("prompt-text");
 
+// Tell the parent you're ready to receive messages
+window.parent.postMessage({ type: "iframe-ready" }, "*");
+
 window.addEventListener("message", (event) => {
   console.log("Received post message:", event.data);
   if (typeof event.data !== "object") return;
 
-  const { pid, qid, prompt } = event.data;
+  const { pid, qid, prompt, type } = event.data;
+  
+  // Ignore messages that are not data messages
+  if (type === "iframe-ready") return;
+
   if (pid && qid) {
     participantId = pid;
     questionId = qid;
@@ -40,9 +47,9 @@ window.addEventListener("message", (event) => {
       promptText.textContent = prompt;
     }
     statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
-    recordBtn.disabled = false;
-  }
+    }
 });
+
 
 recordBtn.onclick = async function () {
   if (recordBtn.innerText === "Start Recording") {
