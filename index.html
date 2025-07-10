@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Voice Recorder</title>
   <script src="lib/WebAudioRecorder.js"></script>
   <style>
     body { font-family: sans-serif; padding: 2em; }
     button { font-size: 1.2em; padding: 0.5em 1em; }
     #status-msg { margin-top: 1em; font-weight: bold; }
+    #prompt-text { margin-top: 1em; font-style: italic; }
   </style>
 </head>
 <body>
 
-  
-  <button id="record-btn">Start Recording</button>
+  <p id="prompt-text">Waiting for prompt...</p>
+  <button id="record-btn" disabled>Start Recording</button>
   <p id="status-msg"></p>
 
 <script>
@@ -28,18 +29,20 @@
 
   // Listen for postMessage from Qualtrics
   window.addEventListener("message", (event) => {
-    console.log("Received post message:", even.data);
+    console.log("Received post message:", event.data);
     if (typeof event.data !== 'object') return;
 
     const { pid, qid, prompt } = event.data;
 
-    if (pid && qid && prompt) {
+    // Update only if pid and qid present, prompt optional
+    if (pid && qid) {
       participantId = pid;
       questionId = qid;
-      recordingPrompt = prompt;
-
-      promptText.textContent = prompt;
-      statusMsg.innerText = `🎤 Ready to record QID: ${qid}`;
+      if (prompt) {
+        recordingPrompt = prompt;
+        promptText.textContent = prompt;
+      }
+      statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
       recordBtn.disabled = false;
     }
   });
