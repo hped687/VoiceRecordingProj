@@ -13,12 +13,12 @@
 </head>
 <body>
 
-  <button id="record-btn">Start Recording</button>
+  <p id="prompt-text">Waiting for prompt...</p>
+  <button id="record-btn" disabled>Start Recording</button>
   <p id="status-msg"></p>
 
-
 <script>
-let gumStream, recorder;
+ let gumStream, recorder;
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
@@ -40,7 +40,7 @@ window.addEventListener("message", (event) => {
       promptText.textContent = prompt;
     }
     statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
-    
+    recordBtn.disabled = false;
   }
 });
 
@@ -68,4 +68,46 @@ recordBtn.onclick = async function () {
       recorder.onComplete = function (rec, blob) {
         statusMsg.innerText = "Recording complete. Uploading...";
 
-        const timestamp = new Date()
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const filename = `${participantId}_${questionId}_${timestamp}.wav`;
+
+        const formData = new FormData();
+        formData.append("file", blob, filename);
+
+        fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+          method: "POST",
+          body: formData,
+        })
+          .then(() => {
+            statusMsg.innerText = "✅ Uploaded successfully!";
+            recordBtn.disabled = true;
+          })
+          .catch((error) => {
+            statusMsg.innerText = "❌ Upload failed.";
+            console.error("Upload error:", error);
+          });
+      };
+
+      recorder.startRecording();
+      recordBtn.innerText = "Stop Recording";
+      window.parent.postMessage({ type: "start-timer" }, "*");
+    } catch (err) {
+      statusMsg.innerText = "⚠️ Microphone access denied.";
+      console.error("Recording error:", err);
+    }
+  } else {
+    try {
+      recorder.finishRecording();
+      gumStream.getTracks().forEach((track) => track.stop());
+      recordBtn.innerText = "Recording Finished";
+    } catch (err) {
+      statusMsg.innerText = "⚠️ Error stopping recording.";
+      console.error(err);
+    }
+  }
+};
+
+</script>
+
+</body>
+</html>
