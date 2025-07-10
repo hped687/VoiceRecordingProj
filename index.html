@@ -26,8 +26,9 @@
   const statusMsg = document.getElementById("status-msg");
   const promptText = document.getElementById("prompt-text");
 
-  // ✅ Listen for postMessage from Qualtrics
+  // Listen for postMessage from Qualtrics
   window.addEventListener("message", (event) => {
+    console.log("Received post message:", even.data);
     if (typeof event.data !== 'object') return;
 
     const { pid, qid, prompt } = event.data;
