@@ -8,7 +8,6 @@
     body { font-family: sans-serif; padding: 2em; }
     button { font-size: 1.2em; padding: 0.5em 1em; }
     #status-msg { margin-top: 1em; font-weight: bold; }
-    #prompt-text { margin-top: 1em; font-style: italic; }
 
     #recording-indicator {
       display: none;
@@ -44,7 +43,6 @@
   <!-- Record button -->
   <button id="record-btn">Start Recording</button>
   <p id="status-msg"></p>
-  <p id="prompt-text"></p>
 
 <script>
 let gumStream, recorder;
@@ -54,7 +52,6 @@ let recordingPrompt = "";
 
 const recordBtn = document.getElementById("record-btn");
 const statusMsg = document.getElementById("status-msg");
-const promptText = document.getElementById("prompt-text");
 const recordingIndicator = document.getElementById("recording-indicator");
 
 function showRecordingIndicator() {
@@ -73,8 +70,7 @@ window.addEventListener("message", (event) => {
   if (typeof event.data !== "object") return;
 
   const { pid, qid, prompt, type } = event.data;
-  
-  // Ignore messages that are not data messages
+
   if (type === "iframe-ready") return;
 
   if (pid && qid) {
@@ -82,9 +78,7 @@ window.addEventListener("message", (event) => {
     questionId = qid;
     if (prompt) {
       recordingPrompt = prompt;
-      promptText.textContent = prompt;
     }
-    statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
   }
 });
 
