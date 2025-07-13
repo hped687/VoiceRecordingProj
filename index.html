@@ -9,16 +9,45 @@
     button { font-size: 1.2em; padding: 0.5em 1em; }
     #status-msg { margin-top: 1em; font-weight: bold; }
     #prompt-text { margin-top: 1em; font-style: italic; }
+
+    #recording-indicator {
+      display: none;
+      align-items: center;
+      margin-bottom: 1em;
+    }
+
+    .blinking-dot {
+      height: 12px;
+      width: 12px;
+      background-color: red;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 1; }
+      50% { opacity: 0; }
+      100% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
 
- 
+  <!-- Blinking red dot indicator -->
+  <div id="recording-indicator">
+    <div class="blinking-dot"></div>
+    <span>Recording...</span>
+  </div>
+
+  <!-- Record button -->
   <button id="record-btn">Start Recording</button>
   <p id="status-msg"></p>
+  <p id="prompt-text"></p>
 
 <script>
- let gumStream, recorder;
+let gumStream, recorder;
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
@@ -26,6 +55,15 @@ let recordingPrompt = "";
 const recordBtn = document.getElementById("record-btn");
 const statusMsg = document.getElementById("status-msg");
 const promptText = document.getElementById("prompt-text");
+const recordingIndicator = document.getElementById("recording-indicator");
+
+function showRecordingIndicator() {
+  recordingIndicator.style.display = "flex";
+}
+
+function hideRecordingIndicator() {
+  recordingIndicator.style.display = "none";
+}
 
 // Tell the parent you're ready to receive messages
 window.parent.postMessage({ type: "iframe-ready" }, "*");
@@ -47,9 +85,8 @@ window.addEventListener("message", (event) => {
       promptText.textContent = prompt;
     }
     statusMsg.innerText = `🎤 Ready to record QID: ${questionId}`;
-    }
+  }
 });
-
 
 recordBtn.onclick = async function () {
   if (recordBtn.innerText === "Start Recording") {
@@ -71,7 +108,6 @@ recordBtn.onclick = async function () {
         encodeAfterRecord: true,
       });
 
-      // Define onComplete handler here to capture latest participantId and questionId
       recorder.onComplete = function (rec, blob) {
         statusMsg.innerText = "Recording complete. Uploading...";
 
@@ -88,15 +124,18 @@ recordBtn.onclick = async function () {
           .then(() => {
             statusMsg.innerText = "✅ Uploaded successfully!";
             recordBtn.disabled = true;
+            hideRecordingIndicator();
           })
           .catch((error) => {
             statusMsg.innerText = "❌ Upload failed.";
             console.error("Upload error:", error);
+            hideRecordingIndicator();
           });
       };
 
       recorder.startRecording();
       recordBtn.innerText = "Stop Recording";
+      showRecordingIndicator();
       window.parent.postMessage({ type: "start-timer" }, "*");
     } catch (err) {
       statusMsg.innerText = "⚠️ Microphone access denied.";
@@ -107,13 +146,13 @@ recordBtn.onclick = async function () {
       recorder.finishRecording();
       gumStream.getTracks().forEach((track) => track.stop());
       recordBtn.innerText = "Recording Finished";
+      hideRecordingIndicator();
     } catch (err) {
       statusMsg.innerText = "⚠️ Error stopping recording.";
       console.error(err);
     }
   }
 };
-
 </script>
 
 </body>
