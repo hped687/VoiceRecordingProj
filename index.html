@@ -68,6 +68,7 @@ function hideRecordingIndicator() {
 window.parent.postMessage({ type: "iframe-ready" }, "*");
 
 window.addEventListener("message", (event) => {
+  console.log("Parent received message:",event.data);
   if (typeof event.data !== "object") return;
 
   const { pid, qid, prompt, type } = event.data;
