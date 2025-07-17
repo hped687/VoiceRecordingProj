@@ -1,3 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Voice Recorder</title>
+<script src="lib/WebAudioRecorder.js"></script>
+<style>
+body { font-family: sans-serif; padding: 2em; }
+button { font-size: 1.2em; padding: 0.5em 1em; }
+#status-msg { margin-top: 1em; font-weight: bold; }
+
+#recording-indicator {
+display: none;
+align-items: center;
+margin-bottom: 1em;
+}
+
+.blinking-dot {
+height: 12px;
+width: 12px;
+background-color: red;
+border-radius: 50%;
+display: inline-block;
+margin-right: 8px;
+animation: blink 1s infinite;
+}
+
+@keyframes blink {
+0% { opacity: 1; }
+50% { opacity: 0; }
+100% { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- Blinking red dot indicator -->
+<div id="recording-indicator">
+<div class="blinking-dot"></div>
+<span>Recording...</span>
+</div>
+
+<!-- Record button -->
+<button id="record-btn">Start Recording</button>
+<p id="status-msg"></p>
+
+<script>
 let gumStream, recorder;
 let participantId = "anon";
 let questionId = "unknown_question";
@@ -127,3 +174,8 @@ recordBtn.onclick = async function () {
     }
   }
 };
+
+</script>
+
+</body>
+</html>
