@@ -1,54 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>Voice Recorder</title>
-  <script src="lib/WebAudioRecorder.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 2em; }
-    button { font-size: 1.2em; padding: 0.5em 1em; }
-    #status-msg { margin-top: 1em; font-weight: bold; }
-
-    #recording-indicator {
-      display: none;
-      align-items: center;
-      margin-bottom: 1em;
-    }
-
-    .blinking-dot {
-      height: 12px;
-      width: 12px;
-      background-color: red;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 8px;
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      0% { opacity: 1; }
-      50% { opacity: 0; }
-      100% { opacity: 1; }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Blinking red dot indicator -->
-  <div id="recording-indicator">
-    <div class="blinking-dot"></div>
-    <span>Recording...</span>
-  </div>
-
-  <!-- Record button -->
-  <button id="record-btn">Start Recording</button>
-  <p id="status-msg"></p>
-
-<script>
 let gumStream, recorder;
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
+
+let hasSentStartTimer = false;
 
 const recordBtn = document.getElementById("record-btn");
 const statusMsg = document.getElementById("status-msg");
@@ -62,12 +17,10 @@ function hideRecordingIndicator() {
   recordingIndicator.style.display = "none";
 }
 
-// Tell the parent you're ready
+// Tell parent iframe is ready
 window.parent.postMessage({ type: "iframe-ready" }, "*");
 
-// Listen for messages from parent
 window.addEventListener("message", (event) => {
-  console.log("Received post message:", event.data);
   if (typeof event.data !== "object") return;
 
   const { pid, qid, prompt, type } = event.data;
@@ -82,18 +35,15 @@ window.addEventListener("message", (event) => {
     }
   }
 
-  // ✅ Handle stop-recording from parent
   if (type === "stop-recording") {
-    console.log("🛑 Received stop-recording from parent");
-
     try {
       if (recorder && gumStream) {
         recorder.finishRecording();
-        gumStream.getTracks().forEach((track) => track.stop());
+        gumStream.getTracks().forEach(track => track.stop());
         recordBtn.innerText = "Recording Finished";
         hideRecordingIndicator();
 
-        // Notify parent that timer can stop (in case timer still running)
+        // Tell parent timer can stop
         window.parent.postMessage({ type: "stop-timer" }, "*");
       }
     } catch (err) {
@@ -149,13 +99,15 @@ recordBtn.onclick = async function () {
       };
 
       recorder.startRecording();
+
       recordBtn.innerText = "Stop Recording";
       showRecordingIndicator();
 
-      // ✅ Start timer in parent
-      setTimeout(() => {
-      window.parent.postMessage({ type: "start-timer" }, "*");
-      }, 100);
+      if (!hasSentStartTimer) {
+        console.log("👉 Sending start-timer to parent");
+        window.parent.postMessage({ type: "start-timer" }, "*");
+        hasSentStartTimer = true;
+      }
     } catch (err) {
       statusMsg.innerText = "⚠️ Microphone access denied.";
       console.error("Recording error:", err);
@@ -163,20 +115,15 @@ recordBtn.onclick = async function () {
   } else {
     try {
       recorder.finishRecording();
-      gumStream.getTracks().forEach((track) => track.stop());
+      gumStream.getTracks().forEach(track => track.stop());
       recordBtn.innerText = "Recording Finished";
       hideRecordingIndicator();
 
-      // ✅ Notify parent to stop the timer
       window.parent.postMessage({ type: "stop-timer" }, "*");
-
+      hasSentStartTimer = false;
     } catch (err) {
       statusMsg.innerText = "⚠️ Error stopping recording.";
       console.error(err);
     }
   }
 };
-</script>
-
-</body>
-</html>
