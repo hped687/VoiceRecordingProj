@@ -62,9 +62,10 @@ function hideRecordingIndicator() {
   recordingIndicator.style.display = "none";
 }
 
-// Tell the parent you're ready to receive messages
+// Tell the parent you're ready
 window.parent.postMessage({ type: "iframe-ready" }, "*");
 
+// Listen for messages from parent
 window.addEventListener("message", (event) => {
   console.log("Received post message:", event.data);
   if (typeof event.data !== "object") return;
@@ -78,6 +79,26 @@ window.addEventListener("message", (event) => {
     questionId = qid;
     if (prompt) {
       recordingPrompt = prompt;
+    }
+  }
+
+  // ✅ Handle stop-recording from parent
+  if (type === "stop-recording") {
+    console.log("🛑 Received stop-recording from parent");
+
+    try {
+      if (recorder && gumStream) {
+        recorder.finishRecording();
+        gumStream.getTracks().forEach((track) => track.stop());
+        recordBtn.innerText = "Recording Finished";
+        hideRecordingIndicator();
+
+        // Notify parent that timer can stop (in case timer still running)
+        window.parent.postMessage({ type: "stop-timer" }, "*");
+      }
+    } catch (err) {
+      statusMsg.innerText = "⚠️ Error during auto-stop.";
+      console.error("Auto-stop error:", err);
     }
   }
 });
@@ -130,6 +151,8 @@ recordBtn.onclick = async function () {
       recorder.startRecording();
       recordBtn.innerText = "Stop Recording";
       showRecordingIndicator();
+
+      // ✅ Start timer in parent
       window.parent.postMessage({ type: "start-timer" }, "*");
     } catch (err) {
       statusMsg.innerText = "⚠️ Microphone access denied.";
@@ -141,6 +164,10 @@ recordBtn.onclick = async function () {
       gumStream.getTracks().forEach((track) => track.stop());
       recordBtn.innerText = "Recording Finished";
       hideRecordingIndicator();
+
+      // ✅ Notify parent to stop the timer
+      window.parent.postMessage({ type: "stop-timer" }, "*");
+
     } catch (err) {
       statusMsg.innerText = "⚠️ Error stopping recording.";
       console.error(err);
