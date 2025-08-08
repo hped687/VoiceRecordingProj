@@ -79,12 +79,20 @@ window.addEventListener("message", (event) => {
   if (pid) participantId = pid;
   if (qid) questionId = qid;
   if (prompt) recordingPrompt = prompt;
-
+  if (duration !== undefined) {
+    currentduration = duration;
+    console.log("Duration set to: ", currentduration);
+  }
   // Only update currentduration when start-timer message is received
   if (type === "start-timer") {
-    currentduration = typeof duration === "number" && duration > 0 ? duration : 10;
-    console.log("⏳ start-timer received, setting duration to:", currentduration);
+    if (typeof duration === "number" && duration > 0) {
+      currentduration = duration;
+    } else {
+      currentduration = 10;
+    }
+    console.log("start timer receieved, setting duration to:" currentduration);
   }
+  
 
   if (type === "stop-recording") {
     try {
