@@ -49,7 +49,7 @@ let gumStream, recorder;
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
-
+let currentduration = 10;
 let hasSentStartTimer = false;
 
 const recordBtn = document.getElementById("record-btn");
@@ -72,7 +72,7 @@ window.addEventListener("message", (event) => {
   if (typeof event.data !== "object") return;
 
   const { pid, qid, prompt, type, duration } = event.data;
-  if (promt && pid && qid){
+  if (prompt && pid && qid){
     console.log("received prompt and duration:", duration);
     currentduration = duration || 20;
   }
