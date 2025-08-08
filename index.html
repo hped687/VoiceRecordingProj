@@ -71,8 +71,11 @@ window.addEventListener("message", (event) => {
   console.log("Parent received message:",event.data);
   if (typeof event.data !== "object") return;
 
-  const { pid, qid, prompt, type } = event.data;
-
+  const { pid, qid, prompt, type, duration } = event.data;
+  if (promt && pid && qid){
+    console.log("received prompt and duration:", duration);
+    currentduration = duration || 20;
+  }
   if (type === "iframe-ready") return;
 
   if (pid && qid) {
@@ -152,8 +155,9 @@ recordBtn.onclick = async function () {
       showRecordingIndicator();
 
       if (!hasSentStartTimer) {
-        console.log("👉 Sending start-timer to parent");
-        window.parent.postMessage({ type: "start-timer" }, "*");
+        
+        console.log("👉 Sending start-timer to parent", currentduration);
+        window.parent.postMessage({ type: "start-timer", duration:currentduration }, "*");
         hasSentStartTimer = true;
       }
     } catch (err) {
