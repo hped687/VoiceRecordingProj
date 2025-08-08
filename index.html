@@ -10,25 +10,25 @@ button { font-size: 1.2em; padding: 0.5em 1em; }
 #status-msg { margin-top: 1em; font-weight: bold; }
 
 #recording-indicator {
-display: none;
-align-items: center;
-margin-bottom: 1em;
+  display: none;
+  align-items: center;
+  margin-bottom: 1em;
 }
 
 .blinking-dot {
-height: 12px;
-width: 12px;
-background-color: red;
-border-radius: 50%;
-display: inline-block;
-margin-right: 8px;
-animation: blink 1s infinite;
+  height: 12px;
+  width: 12px;
+  background-color: red;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  animation: blink 1s infinite;
 }
 
 @keyframes blink {
-0% { opacity: 1; }
-50% { opacity: 0; }
-100% { opacity: 1; }
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
 }
 </style>
 </head>
@@ -36,8 +36,8 @@ animation: blink 1s infinite;
 
 <!-- Blinking red dot indicator -->
 <div id="recording-indicator">
-<div class="blinking-dot"></div>
-<span>Recording...</span>
+  <div class="blinking-dot"></div>
+  <span>Recording...</span>
 </div>
 
 <!-- Record button -->
@@ -49,7 +49,7 @@ let gumStream, recorder;
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
-let currentduration = 10;
+let currentduration = 10;  // default duration
 let hasSentStartTimer = false;
 
 const recordBtn = document.getElementById("record-btn");
@@ -68,22 +68,22 @@ function hideRecordingIndicator() {
 window.parent.postMessage({ type: "iframe-ready" }, "*");
 
 window.addEventListener("message", (event) => {
-  console.log("Parent received message:",event.data);
-  if (typeof event.data !== "object") return;
+  if (!event.data || typeof event.data !== "object") return;
 
   const { pid, qid, prompt, type, duration } = event.data;
-  if (prompt && pid && qid){
-    console.log("received prompt and duration:", duration);
-    currentduration = duration || 10;
-  }
-  if (type === "iframe-ready") return;
 
-  if (pid && qid) {
-    participantId = pid;
-    questionId = qid;
-    if (prompt) {
-      recordingPrompt = prompt;
-    }
+  // Debug log all messages for visibility
+  console.log("Received message from parent:", event.data);
+
+  // Update ids and prompt if present
+  if (pid) participantId = pid;
+  if (qid) questionId = qid;
+  if (prompt) recordingPrompt = prompt;
+
+  // Only update currentduration when start-timer message is received
+  if (type === "start-timer") {
+    currentduration = typeof duration === "number" && duration > 0 ? duration : 10;
+    console.log("⏳ start-timer received, setting duration to:", currentduration);
   }
 
   if (type === "stop-recording") {
@@ -96,6 +96,7 @@ window.addEventListener("message", (event) => {
 
         // Tell parent timer can stop
         window.parent.postMessage({ type: "stop-timer" }, "*");
+        hasSentStartTimer = false;  // reset flag on stop
       }
     } catch (err) {
       statusMsg.innerText = "⚠️ Error during auto-stop.";
@@ -120,7 +121,7 @@ recordBtn.onclick = async function () {
       });
 
       recorder.setOptions({
-        timeLimit: 1800,
+        timeLimit: currentduration,
         encodeAfterRecord: true,
       });
 
@@ -137,16 +138,16 @@ recordBtn.onclick = async function () {
           method: "POST",
           body: formData,
         })
-          .then(() => {
-            statusMsg.innerText = "✅ Uploaded successfully!";
-            recordBtn.disabled = true;
-            hideRecordingIndicator();
-          })
-          .catch((error) => {
-            statusMsg.innerText = "❌ Upload failed.";
-            console.error("Upload error:", error);
-            hideRecordingIndicator();
-          });
+        .then(() => {
+          statusMsg.innerText = "✅ Uploaded successfully!";
+          recordBtn.disabled = true;
+          hideRecordingIndicator();
+        })
+        .catch((error) => {
+          statusMsg.innerText = "❌ Upload failed.";
+          console.error("Upload error:", error);
+          hideRecordingIndicator();
+        });
       };
 
       recorder.startRecording();
@@ -155,9 +156,8 @@ recordBtn.onclick = async function () {
       showRecordingIndicator();
 
       if (!hasSentStartTimer) {
-        
-        console.log("👉 Sending start-timer to parent", currentduration);
-        window.parent.postMessage({ type: "start-timer", duration:currentduration }, "*");
+        console.log("👉 Sending start-timer to parent with duration:", currentduration);
+        window.parent.postMessage({ type: "start-timer", duration: currentduration }, "*");
         hasSentStartTimer = true;
       }
     } catch (err) {
@@ -179,7 +179,6 @@ recordBtn.onclick = async function () {
     }
   }
 };
-
 </script>
 
 </body>
