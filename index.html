@@ -74,7 +74,7 @@ window.addEventListener("message", (event) => {
   const { pid, qid, prompt, type, duration } = event.data;
   if (prompt && pid && qid){
     console.log("received prompt and duration:", duration);
-    currentduration = duration || 20;
+    currentduration = duration || 10;
   }
   if (type === "iframe-ready") return;
 
