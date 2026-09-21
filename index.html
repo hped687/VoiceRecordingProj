@@ -45,146 +45,145 @@ button { font-size: 1.2em; padding: 0.5em 1em; }
 <p id="status-msg"></p>
 
 <script>
-let gumStream, recorder;
+let gumStream, recorder, audioCtx;
 let participantId = "anon";
 let questionId = "unknown_question";
 let recordingPrompt = "";
-let currentduration = 10;  // default duration
+let currentduration = 10;   // default only; Qualtrics sends the real value
+let isRecording = false;
 let hasSentStartTimer = false;
 
 const recordBtn = document.getElementById("record-btn");
 const statusMsg = document.getElementById("status-msg");
 const recordingIndicator = document.getElementById("recording-indicator");
 
-function showRecordingIndicator() {
-  recordingIndicator.style.display = "flex";
-}
-
-function hideRecordingIndicator() {
-  recordingIndicator.style.display = "none";
-}
+function showRecordingIndicator() { recordingIndicator.style.display = "flex"; }
+function hideRecordingIndicator() { recordingIndicator.style.display = "none"; }
 
 // Tell parent iframe is ready
 window.parent.postMessage({ type: "iframe-ready" }, "*");
 
 window.addEventListener("message", (event) => {
   if (!event.data || typeof event.data !== "object") return;
-
   const { pid, qid, prompt, type, duration } = event.data;
-
-  // Debug log all messages for visibility
   console.log("Received message from parent:", event.data);
 
-  // Update ids and prompt if present
   if (pid) participantId = pid;
   if (qid) questionId = qid;
   if (prompt) recordingPrompt = prompt;
-  if (duration !== undefined) {
-    currentduration = duration;
-    console.log("Duration set to: ", currentduration);
+
+  // Duration comes with the prompt message from Qualtrics.
+  // Only accept it before recording starts, so the limit can't change mid-recording.
+  const d = Number(duration);
+  if (duration !== undefined && d > 0 && !isRecording) {
+    currentduration = d;
+    console.log("Duration set to:", currentduration);
   }
-  // Only update currentduration when start-timer message is received
-  if (type === "start-timer") {
-    if (typeof duration === "number" && duration > 0) {
-      currentduration = duration;
-    } else {
-      currentduration = 10;
-    }
-    console.log("start timer receieved, setting duration to:", currentduration);
-  }
-  
 
   if (type === "stop-recording") {
-    try {
-      if (recorder && gumStream) {
-        recorder.finishRecording();
-        gumStream.getTracks().forEach(track => track.stop());
-        recordBtn.innerText = "Recording Finished";
-        hideRecordingIndicator();
-
-        // Tell parent timer can stop
-        window.parent.postMessage({ type: "stop-timer" }, "*");
-        hasSentStartTimer = false;  // reset flag on stop
-      }
-    } catch (err) {
-      statusMsg.innerText = "⚠️ Error during auto-stop.";
-      console.error("Auto-stop error:", err);
-    }
+    stopRecording("Qualtrics timer");
   }
 });
 
+// One stop function used by the button, the recorder's time limit, and Qualtrics.
+// Safe to call more than once.
+function stopRecording(reason) {
+  if (!isRecording) return;
+  isRecording = false;
+  console.log("⏹️ Stopping recording:", reason);
+
+  try {
+    recorder.finishRecording();
+  } catch (err) {
+    console.error("finishRecording error:", err);
+  }
+  if (gumStream) gumStream.getTracks().forEach((t) => t.stop());
+  if (audioCtx) audioCtx.close().catch(() => {});
+
+  recordBtn.innerText = "Recording Finished";
+  recordBtn.disabled = true;
+  hideRecordingIndicator();
+
+  window.parent.postMessage({ type: "stop-timer" }, "*");
+  hasSentStartTimer = false;
+}
+
 recordBtn.onclick = async function () {
-  if (recordBtn.innerText === "Start Recording") {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      gumStream = stream;
-      const input = new AudioContext().createMediaStreamSource(stream);
+  if (isRecording) {
+    stopRecording("button");
+    return;
+  }
+  if (recordBtn.innerText !== "Start Recording") return;
 
-      recorder = new WebAudioRecorder(input, {
-        workerDir: "lib/",
-        encoding: "wav",
-        numChannels: 1,
-        onEncoderLoading: () => (statusMsg.innerText = "Loading encoder..."),
-        onEncoderLoaded: () => (statusMsg.innerText = "Encoder ready. Recording..."),
-      });
+  try {
+    recordBtn.disabled = true; // prevent double-clicks while the mic starts
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    gumStream = stream;
+    audioCtx = new AudioContext();
+    const input = audioCtx.createMediaStreamSource(stream);
 
-      recorder.setOptions({
-        timeLimit: currentduration,
-        encodeAfterRecord: true,
-      });
+    recorder = new WebAudioRecorder(input, {
+      workerDir: "lib/",
+      encoding: "wav",
+      numChannels: 1,
+      onEncoderLoading: () => (statusMsg.innerText = "Loading encoder..."),
+      onEncoderLoaded: () => (statusMsg.innerText = "Encoder ready. Recording..."),
+    });
 
-      recorder.onComplete = function (rec, blob) {
-        statusMsg.innerText = "Recording complete. Uploading...";
+    recorder.setOptions({
+      timeLimit: currentduration,
+      encodeAfterRecord: true,
+    });
 
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const filename = `${participantId}_${questionId}_${timestamp}.wav`;
+    // When the time limit is reached, clean up properly (mic, button, parent timer)
+    recorder.onTimeout = function () {
+      stopRecording("time limit (" + currentduration + "s)");
+    };
 
-        const formData = new FormData();
-        formData.append("file", blob, filename);
+    recorder.onComplete = function (rec, blob) {
+      statusMsg.innerText = "Recording complete. Uploading...";
 
-        fetch("https://qualtrics-audio-upload.onrender.com/upload", {
-          method: "POST",
-          body: formData,
-        })
-        .then(() => {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `${participantId}_${questionId}_${timestamp}.wav`;
+
+      const formData = new FormData();
+      formData.append("file", blob, filename);
+
+      fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+        method: "POST",
+        body: formData,
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Server responded " + res.status);
           statusMsg.innerText = "✅ Uploaded successfully!";
-          recordBtn.disabled = true;
-          hideRecordingIndicator();
         })
         .catch((error) => {
           statusMsg.innerText = "❌ Upload failed.";
           console.error("Upload error:", error);
-          hideRecordingIndicator();
         });
-      };
+    };
 
-      recorder.startRecording();
+    recorder.onError = function (rec, err) {
+      statusMsg.innerText = "⚠️ Recording error.";
+      console.error("Recorder error:", err);
+    };
 
-      recordBtn.innerText = "Stop Recording";
-      showRecordingIndicator();
+    recorder.startRecording();
+    isRecording = true;
 
-      if (!hasSentStartTimer) {
-        console.log("👉 Sending start-timer to parent with duration:", currentduration);
-        window.parent.postMessage({ type: "start-timer", duration: currentduration }, "*");
-        hasSentStartTimer = true;
-      }
-    } catch (err) {
-      statusMsg.innerText = "⚠️ Microphone access denied.";
-      console.error("Recording error:", err);
+    recordBtn.innerText = "Stop Recording";
+    recordBtn.disabled = false;
+    showRecordingIndicator();
+
+    if (!hasSentStartTimer) {
+      console.log("👉 Sending start-timer to parent with duration:", currentduration);
+      window.parent.postMessage({ type: "start-timer", duration: currentduration }, "*");
+      hasSentStartTimer = true;
     }
-  } else {
-    try {
-      recorder.finishRecording();
-      gumStream.getTracks().forEach(track => track.stop());
-      recordBtn.innerText = "Recording Finished";
-      hideRecordingIndicator();
-
-      window.parent.postMessage({ type: "stop-timer" }, "*");
-      hasSentStartTimer = false;
-    } catch (err) {
-      statusMsg.innerText = "⚠️ Error stopping recording.";
-      console.error(err);
-    }
+  } catch (err) {
+    recordBtn.disabled = false;
+    statusMsg.innerText = "⚠️ Microphone access denied.";
+    console.error("Recording error:", err);
   }
 };
 </script>
