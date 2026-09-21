@@ -145,7 +145,29 @@ recordBtn.onclick = async function () {
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const filename = `${participantId}_${questionId}_${timestamp}.wav`;
-
+      function upload(attempt = 1) {
+        const formData = new FormData();
+        formData.append("file", blob, filename);
+      
+        fetch("https://qualtrics-audio-upload.onrender.com/upload", {
+          method: "POST",
+          body: formData,
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Server responded " + res.status);
+            statusMsg.innerText = "✅ Uploaded successfully!";
+          })
+          .catch((error) => {
+            console.error("Upload error (attempt " + attempt + "):", error);
+            if (attempt < 5) {
+              statusMsg.innerText = "Upload problem, retrying (" + attempt + "/4)...";
+              setTimeout(() => upload(attempt + 1), attempt * 5000); // 5s, 10s, 15s, 20s
+            } else {
+              statusMsg.innerText = "❌ Upload failed. Please don't leave this page and tell the researcher.";
+            }
+          });
+      }
+      upload();
       const formData = new FormData();
       formData.append("file", blob, filename);
 
