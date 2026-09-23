@@ -142,6 +142,8 @@ recordBtn.onclick = async function () {
 
     recorder.onComplete = function (rec, blob) {
       statusMsg.innerText = "Recording complete. Uploading...";
+      // Tell Qualtrics an upload is in progress so it can hide the Next button
+      window.parent.postMessage({ type: "upload-status", status: "uploading" }, "*");
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const filename = `${participantId}_${questionId}_${timestamp}.wav`;
@@ -158,14 +160,20 @@ recordBtn.onclick = async function () {
           .then((res) => {
             if (!res.ok) throw new Error("Server responded " + res.status);
             statusMsg.innerText = "✅ Uploaded successfully!";
+            window.parent.postMessage({ type: "upload-status", status: "done" }, "*");
           })
           .catch((error) => {
             console.error("Upload error (attempt " + attempt + "):", error);
             if (attempt < 5) {
               statusMsg.innerText = "Upload problem, retrying (" + attempt + "/4)...";
+              window.parent.postMessage(
+                { type: "upload-status", status: "retrying", attempt: attempt },
+                "*"
+              );
               setTimeout(() => upload(attempt + 1), attempt * 5000);
             } else {
-              statusMsg.innerText = "❌ Upload failed. Please don't leave this page and tell the researcher.";
+              statusMsg.innerText = "❌ Upload failed. Please tell the researcher, then continue.";
+              window.parent.postMessage({ type: "upload-status", status: "failed" }, "*");
             }
           });
       }
